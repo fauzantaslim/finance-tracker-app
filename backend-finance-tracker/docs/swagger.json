@@ -1,0 +1,2546 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Finance Tracker App Service API",
+    "description": "API untuk Sistem Informasi Manajemen dengan fitur CRUD User, KTP (Kartu Tanda Penduduk), dan SIM (Surat Izin Mengemudi). Mendukung autentikasi JWT, pagination, search, dan sorting.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8026/api",
+      "description": "Development server"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "ID unik user (auto-generated dengan nanoid)",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email user",
+            "example": "john.doe@example.com"
+          },
+          "full_name": {
+            "type": "string",
+            "description": "Nama lengkap user",
+            "example": "John Doe"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email", "full_name", "password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email user (maksimal 255 karakter)",
+            "example": "john.doe@example.com"
+          },
+          "full_name": {
+            "type": "string",
+            "description": "Nama lengkap user (maksimal 255 karakter)",
+            "example": "John Doe"
+          },
+          "password": {
+            "type": "string",
+            "description": "Password user (minimal 8 karakter, maksimal 255 karakter)",
+            "example": "password123"
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "ID user yang akan diupdate",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email user baru (opsional)",
+            "example": "john.doe.new@example.com"
+          },
+          "full_name": {
+            "type": "string",
+            "description": "Nama lengkap user baru (opsional)",
+            "example": "John Doe Updated"
+          },
+          "password": {
+            "type": "string",
+            "description": "Password user baru (opsional)",
+            "example": "newpassword123"
+          }
+        }
+      },
+      "PaginationParams": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Nomor halaman (default: 1)",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Jumlah data per halaman (default: 10, maksimal: 100)",
+            "example": 10
+          },
+          "search": {
+            "type": "string",
+            "description": "Kata kunci pencarian berdasarkan email atau nama",
+            "example": "john"
+          },
+          "sort_by": {
+            "type": "string",
+            "description": "Field untuk sorting (default: created_at)",
+            "example": "created_at"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Urutan sorting (default: desc)",
+            "example": "desc"
+          }
+        }
+      },
+      "PaginationInfo": {
+        "type": "object",
+        "properties": {
+          "total_items": {
+            "type": "integer",
+            "description": "Total jumlah data",
+            "example": 25
+          },
+          "total_pages": {
+            "type": "integer",
+            "description": "Total jumlah halaman",
+            "example": 3
+          },
+          "current_page": {
+            "type": "integer",
+            "description": "Halaman saat ini",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Jumlah data per halaman",
+            "example": 10
+          },
+          "has_next": {
+            "type": "boolean",
+            "description": "Apakah ada halaman berikutnya",
+            "example": true
+          },
+          "has_prev": {
+            "type": "boolean",
+            "description": "Apakah ada halaman sebelumnya",
+            "example": false
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "status_code": {
+            "type": "integer",
+            "description": "HTTP status code",
+            "example": 200
+          },
+          "message": {
+            "type": "string",
+            "description": "Pesan response",
+            "example": "Operasi berhasil"
+          },
+          "data": {
+            "type": "object",
+            "description": "Data response"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "status_code": {
+            "type": "integer",
+            "description": "HTTP status code",
+            "example": 400
+          },
+          "errors": {
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "Pesan error sederhana"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "description": "Path field yang error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Pesan error untuk field tersebut"
+                    }
+                  }
+                },
+                "description": "Array error detail untuk validasi"
+              }
+            ]
+          }
+        }
+      },
+      "Account": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "ID unik account (auto-generated dengan nanoid)",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "name": {
+            "type": "string",
+            "description": "Nama account",
+            "example": "Bank BCA"
+          },
+          "balance": {
+            "type": "number",
+            "description": "Saldo account",
+            "example": 5000000
+          },
+          "icon": {
+            "type": "string",
+            "description": "Icon untuk account",
+            "example": "bank"
+          },
+          "color": {
+            "type": "string",
+            "description": "Warna untuk account (hex color)",
+            "example": "#3B82F6"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "ID user pemilik account",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          }
+        }
+      },
+      "CreateAccountRequest": {
+        "type": "object",
+        "required": ["name", "balance", "icon", "color"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Nama account (1-100 karakter)",
+            "example": "Bank BCA"
+          },
+          "balance": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Saldo awal account (minimal 0)",
+            "example": 5000000
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Icon untuk account (1-100 karakter)",
+            "example": "bank"
+          },
+          "color": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 7,
+            "description": "Warna untuk account dalam format hex (1-7 karakter)",
+            "example": "#3B82F6"
+          }
+        }
+      },
+      "UpdateAccountRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Nama account baru (opsional)",
+            "example": "Bank BCA Updated"
+          },
+          "balance": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Saldo account baru (opsional)",
+            "example": 6000000
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Icon account baru (opsional)",
+            "example": "credit-card"
+          },
+          "color": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 7,
+            "description": "Warna account baru (opsional)",
+            "example": "#10B981"
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string",
+            "description": "ID unik category (auto-generated dengan nanoid)",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "name": {
+            "type": "string",
+            "description": "Nama category",
+            "example": "Makanan"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["income", "expense"],
+            "description": "Tipe category",
+            "example": "expense"
+          },
+          "icon": {
+            "type": "string",
+            "description": "Icon untuk category",
+            "example": "food"
+          },
+          "color": {
+            "type": "string",
+            "description": "Warna untuk category (hex color)",
+            "example": "#EF4444"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "ID user pemilik category",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          }
+        }
+      },
+      "CreateCategoryRequest": {
+        "type": "object",
+        "required": ["name", "type", "icon", "color"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Nama category (1-100 karakter)",
+            "example": "Makanan"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["income", "expense"],
+            "description": "Tipe category",
+            "example": "expense"
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Icon untuk category (1-100 karakter)",
+            "example": "food"
+          },
+          "color": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 7,
+            "description": "Warna untuk category dalam format hex (1-7 karakter)",
+            "example": "#EF4444"
+          }
+        }
+      },
+      "UpdateCategoryRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Nama category baru (opsional)",
+            "example": "Makanan & Minuman"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["income", "expense"],
+            "description": "Tipe category baru (opsional)",
+            "example": "expense"
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Icon category baru (opsional)",
+            "example": "restaurant"
+          },
+          "color": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 7,
+            "description": "Warna category baru (opsional)",
+            "example": "#F59E0B"
+          }
+        }
+      },
+      "DashboardSummary": {
+        "type": "object",
+        "properties": {
+          "total_income": {
+            "type": "number",
+            "description": "Total pendapatan",
+            "example": 1500000
+          },
+          "total_expense": {
+            "type": "number",
+            "description": "Total pengeluaran",
+            "example": 500000
+          },
+          "net_income": {
+            "type": "number",
+            "description": "Pendapatan bersih (total_income - total_expense)",
+            "example": 1000000
+          },
+          "transaction_count": {
+            "type": "integer",
+            "description": "Jumlah total transaksi",
+            "example": 25
+          }
+        }
+      },
+      "CategorySummary": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string",
+            "description": "ID kategori",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "category_name": {
+            "type": "string",
+            "description": "Nama kategori",
+            "example": "Makanan"
+          },
+          "category_type": {
+            "type": "string",
+            "enum": ["income", "expense"],
+            "description": "Tipe kategori",
+            "example": "expense"
+          },
+          "category_icon": {
+            "type": "string",
+            "description": "Icon kategori",
+            "example": "mdi:food"
+          },
+          "category_color": {
+            "type": "string",
+            "description": "Warna kategori (hex color)",
+            "example": "#EF4444"
+          },
+          "total_amount": {
+            "type": "number",
+            "description": "Total jumlah transaksi dalam kategori ini",
+            "example": 500000
+          },
+          "transaction_count": {
+            "type": "integer",
+            "description": "Jumlah transaksi dalam kategori ini",
+            "example": 10
+          }
+        }
+      },
+      "TransactionSummary": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "description": "ID transaksi",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["income", "expense"],
+            "description": "Tipe transaksi",
+            "example": "expense"
+          },
+          "amount": {
+            "type": "number",
+            "description": "Jumlah transaksi",
+            "example": 50000
+          },
+          "description": {
+            "type": "string",
+            "description": "Deskripsi transaksi (opsional)",
+            "example": "Makan siang di restoran"
+          },
+          "transaction_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Tanggal transaksi",
+            "example": "2024-01-15T10:30:00Z"
+          },
+          "category_name": {
+            "type": "string",
+            "description": "Nama kategori",
+            "example": "Makanan"
+          },
+          "category_icon": {
+            "type": "string",
+            "description": "Icon kategori",
+            "example": "mdi:food"
+          },
+          "category_color": {
+            "type": "string",
+            "description": "Warna kategori",
+            "example": "#EF4444"
+          },
+          "account_name": {
+            "type": "string",
+            "description": "Nama akun",
+            "example": "Bank BCA"
+          },
+          "account_icon": {
+            "type": "string",
+            "description": "Icon akun",
+            "example": "mdi:bank"
+          },
+          "account_color": {
+            "type": "string",
+            "description": "Warna akun",
+            "example": "#3B82F6"
+          }
+        }
+      },
+      "DashboardFilters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["all", "income", "expense"],
+            "description": "Filter berdasarkan tipe transaksi",
+            "example": "all"
+          },
+          "date_filter": {
+            "type": "string",
+            "enum": ["week", "month", "year", "custom"],
+            "description": "Filter berdasarkan periode waktu",
+            "example": "month"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Tanggal mulai (jika date_filter = custom)",
+            "example": "2024-01-01T00:00:00Z"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Tanggal akhir (jika date_filter = custom)",
+            "example": "2024-01-31T23:59:59Z"
+          },
+          "category_id": {
+            "type": "string",
+            "description": "Filter berdasarkan ID kategori",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "account_id": {
+            "type": "string",
+            "description": "Filter berdasarkan ID akun",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "search": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Kata kunci pencarian",
+            "example": "makanan"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Nomor halaman",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Jumlah data per halaman",
+            "example": 10
+          },
+          "sort_by": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "Field untuk sorting",
+            "example": "transaction_date"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Urutan sorting",
+            "example": "desc"
+          }
+        }
+      },
+      "TransactionChartSummary": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Jumlah transaksi",
+            "example": 50000
+          },
+          "type": {
+            "type": "string",
+            "enum": ["income", "expense"],
+            "description": "Tipe transaksi",
+            "example": "expense"
+          },
+          "transaction_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Tanggal transaksi",
+            "example": "2024-01-15T10:30:00Z"
+          }
+        }
+      },
+      "DashboardResponse": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/DashboardSummary"
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionChartSummary"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Masukkan JWT token dengan format: Bearer <token>"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register user baru",
+        "description": "Endpoint untuk mendaftarkan user baru ke sistem",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User berhasil didaftarkan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Data tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Email sudah digunakan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login user",
+        "description": "Endpoint untuk melakukan autentikasi user. User agent dan IP address akan diambil otomatis dari request headers.",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Email pengguna",
+                    "example": "johndoe@gmail.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "Password pengguna",
+                    "example": "psswrd123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login berhasil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "tokens": {
+                              "type": "object",
+                              "properties": {
+                                "access_token": {
+                                  "type": "string",
+                                  "description": "Access token untuk autentikasi",
+                                  "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                                }
+                              },
+                              "description": "Refresh token dikirim sebagai HttpOnly Secure Cookie bernama 'refresh_token'"
+                            },
+                            "user": {
+                              "$ref": "#/components/schemas/User"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Email atau password kosong",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Kredensial salah",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Mengambil profil user yang sedang login",
+        "description": "Endpoint untuk mengambil profil user yang sedang login (memerlukan autentikasi)",
+        "tags": ["Authentication"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profil user berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - User tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Logout user",
+        "description": "Endpoint untuk melakukan logout user dan menghapus session",
+        "tags": ["Authentication"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logout berhasil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Refresh access token",
+        "description": "Endpoint untuk memperbarui access token menggunakan refresh token",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": false,
+          "description": "Tidak perlu body. Refresh token dibaca dari HttpOnly Secure Cookie bernama 'refresh_token'",
+          "content": {}
+        },
+        "responses": {
+          "200": {
+            "description": "Token berhasil diperbarui",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "tokens": {
+                              "type": "object",
+                              "properties": {
+                                "access_token": {
+                                  "type": "string",
+                                  "description": "Access token baru",
+                                  "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                                }
+                              }
+                            },
+                            "user": {
+                              "$ref": "#/components/schemas/User"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Refresh token tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Refresh token tidak valid atau expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "summary": "Mengambil daftar user",
+        "description": "Endpoint untuk mengambil daftar user dengan pagination dan search",
+        "tags": ["Users"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Nomor halaman",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Jumlah data per halaman",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Kata kunci pencarian",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "Field untuk sorting",
+            "schema": {
+              "type": "string",
+              "default": "created_at"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Urutan sorting",
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "default": "desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar user berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/User"
+                          }
+                        },
+                        "pagination": {
+                          "$ref": "#/components/schemas/PaginationInfo"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Parameter tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}": {
+      "get": {
+        "summary": "Mengambil detail user",
+        "description": "Endpoint untuk mengambil detail user berdasarkan ID",
+        "tags": ["Users"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "ID user yang akan diambil",
+            "schema": {
+              "type": "string",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail user berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - ID tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - User tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Memperbarui data user",
+        "description": "Endpoint untuk memperbarui data user berdasarkan ID",
+        "tags": ["Users"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "ID user yang akan diperbarui",
+            "schema": {
+              "type": "string",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Email user baru (opsional)",
+                    "example": "johndoe@gmail.com"
+                  },
+                  "full_name": {
+                    "type": "string",
+                    "description": "Nama lengkap user baru (opsional)",
+                    "example": "John Doe Updated"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "Password user baru (opsional)",
+                    "example": "psswrd123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User berhasil diperbarui",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Data tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - User tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Email sudah digunakan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Menghapus user",
+        "description": "Endpoint untuk menghapus user berdasarkan ID",
+        "tags": ["Users"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "ID user yang akan dihapus",
+            "schema": {
+              "type": "string",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User berhasil dihapus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - ID tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - User tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts": {
+      "get": {
+        "summary": "Mengambil daftar account",
+        "description": "Endpoint untuk mengambil daftar account user yang sedang login dengan pagination dan search",
+        "tags": ["Accounts"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Nomor halaman",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Jumlah data per halaman",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Kata kunci pencarian berdasarkan nama account",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "Field untuk sorting",
+            "schema": {
+              "type": "string",
+              "default": "created_at"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Urutan sorting",
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "default": "desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar account berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Account"
+                          }
+                        },
+                        "pagination": {
+                          "$ref": "#/components/schemas/PaginationInfo"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Parameter tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Membuat account baru",
+        "description": "Endpoint untuk membuat account baru untuk user yang sedang login",
+        "tags": ["Accounts"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account berhasil dibuat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Account"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Data tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Nama account sudah digunakan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{accountId}": {
+      "get": {
+        "summary": "Mengambil detail account",
+        "description": "Endpoint untuk mengambil detail account berdasarkan ID",
+        "tags": ["Accounts"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "description": "ID account yang akan diambil",
+            "schema": {
+              "type": "string",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail account berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Account"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - ID tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - Account tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Memperbarui data account",
+        "description": "Endpoint untuk memperbarui data account berdasarkan ID",
+        "tags": ["Accounts"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "description": "ID account yang akan diperbarui",
+            "schema": {
+              "type": "string",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account berhasil diperbarui",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Account"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Data tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - Account tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Nama account sudah digunakan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Menghapus account",
+        "description": "Endpoint untuk menghapus account berdasarkan ID",
+        "tags": ["Accounts"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "description": "ID account yang akan dihapus",
+            "schema": {
+              "type": "string",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account berhasil dihapus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - ID tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - Account tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "summary": "Mengambil daftar category",
+        "description": "Endpoint untuk mengambil daftar category user yang sedang login dengan pagination dan search",
+        "tags": ["Categories"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Nomor halaman",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Jumlah data per halaman",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Kata kunci pencarian berdasarkan nama category",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "Field untuk sorting",
+            "schema": {
+              "type": "string",
+              "default": "created_at"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Urutan sorting",
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "default": "desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar category berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Category"
+                          }
+                        },
+                        "pagination": {
+                          "$ref": "#/components/schemas/PaginationInfo"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Parameter tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Membuat category baru",
+        "description": "Endpoint untuk membuat category baru untuk user yang sedang login",
+        "tags": ["Categories"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category berhasil dibuat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Category"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Data tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Nama category sudah digunakan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/{categoryId}": {
+      "get": {
+        "summary": "Mengambil detail category",
+        "description": "Endpoint untuk mengambil detail category berdasarkan ID",
+        "tags": ["Categories"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "description": "ID category yang akan diambil",
+            "schema": {
+              "type": "string",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail category berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Category"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - ID tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - Category tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Memperbarui data category",
+        "description": "Endpoint untuk memperbarui data category berdasarkan ID",
+        "tags": ["Categories"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "description": "ID category yang akan diperbarui",
+            "schema": {
+              "type": "string",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category berhasil diperbarui",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Category"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Data tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - Category tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Nama category sudah digunakan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Menghapus category",
+        "description": "Endpoint untuk menghapus category berdasarkan ID",
+        "tags": ["Categories"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "description": "ID category yang akan dihapus",
+            "schema": {
+              "type": "string",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category berhasil dihapus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - ID tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - Category tidak ditemukan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard": {
+      "get": {
+        "summary": "Mengambil data dashboard lengkap",
+        "description": "Endpoint untuk mengambil data dashboard lengkap (summary dan transactions untuk chart)",
+        "tags": ["Dashboard"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter berdasarkan tipe transaksi",
+            "schema": {
+              "type": "string",
+              "enum": ["all", "income", "expense"],
+              "default": "all"
+            }
+          },
+          {
+            "name": "date_filter",
+            "in": "query",
+            "description": "Filter berdasarkan periode waktu",
+            "schema": {
+              "type": "string",
+              "enum": ["week", "month", "year", "custom"]
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "description": "Tanggal mulai (jika date_filter = custom)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "description": "Tanggal akhir (jika date_filter = custom)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data dashboard berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/SuccessResponse" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/DashboardResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Parameter tidak valid",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/categories": {
+      "get": {
+        "summary": "Mengambil summary kategori",
+        "description": "Endpoint untuk mengambil summary kategori dengan total amount dan transaction count per kategori",
+        "tags": ["Dashboard"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter berdasarkan tipe transaksi",
+            "schema": {
+              "type": "string",
+              "enum": ["all", "income", "expense"],
+              "default": "all"
+            }
+          },
+          {
+            "name": "date_filter",
+            "in": "query",
+            "description": "Filter berdasarkan periode waktu",
+            "schema": {
+              "type": "string",
+              "enum": ["week", "month", "year", "custom"]
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "description": "Tanggal mulai (jika date_filter = custom)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "description": "Tanggal akhir (jika date_filter = custom)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categories summary berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "categories": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/CategorySummary"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Parameter tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/transactions": {
+      "get": {
+        "summary": "Mengambil daftar transaksi",
+        "description": "Endpoint untuk mengambil daftar transaksi dengan pagination dan filter",
+        "tags": ["Dashboard"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter berdasarkan tipe transaksi",
+            "schema": {
+              "type": "string",
+              "enum": ["all", "income", "expense"],
+              "default": "all"
+            }
+          },
+          {
+            "name": "date_filter",
+            "in": "query",
+            "description": "Filter berdasarkan periode waktu",
+            "schema": {
+              "type": "string",
+              "enum": ["week", "month", "year", "custom"]
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "description": "Tanggal mulai (jika date_filter = custom)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "description": "Tanggal akhir (jika date_filter = custom)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "description": "Filter berdasarkan ID kategori",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "description": "Filter berdasarkan ID akun",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Kata kunci pencarian",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Nomor halaman",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Jumlah data per halaman",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "Field untuk sorting",
+            "schema": {
+              "type": "string",
+              "maxLength": 50,
+              "default": "transaction_date"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Urutan sorting",
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "default": "desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transactions list berhasil diambil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "transactions": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/TransactionSummary"
+                              }
+                            },
+                            "pagination": {
+                              "$ref": "#/components/schemas/PaginationInfo"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Parameter tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token tidak valid atau tidak ada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Endpoints untuk autentikasi"
+    },
+    {
+      "name": "Users",
+      "description": "Endpoints untuk operasi CRUD user"
+    },
+    {
+      "name": "Accounts",
+      "description": "Endpoints untuk operasi CRUD account"
+    },
+    {
+      "name": "Categories",
+      "description": "Endpoints untuk operasi CRUD category"
+    },
+    {
+      "name": "Dashboard",
+      "description": "Endpoints untuk data dashboard dan analytics"
+    }
+  ]
+}

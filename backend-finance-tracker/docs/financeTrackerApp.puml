@@ -1,0 +1,99 @@
+@startuml
+
+entity User {
+  * user_id : char(21) <<PK>>
+  --
+  * email : varchar(255) <<unique>>
+  * full_name : varchar(255)
+  * password : varchar(255)
+  --
+  * created_at : timestamp
+  updated_at : timestamp
+}
+
+entity Session {
+  * session_id : int <<PK>> <<autoincrement>>
+  --
+  * refresh_token : text
+  * expires_at : datetime
+  user_agent : varchar(255)
+  ip_address : varchar(25)
+  --
+  * user_id : char(21) <<FK>>
+  --
+  * created_at : timestamp
+  updated_at : timestamp
+  revoked_at : timestamp
+}
+
+entity Account {
+  * account_id : char(21) <<PK>>
+  --
+  * name : varchar(100)
+  * balance : decimal(15,2)
+  * icon : varchar(100)
+  * color : varchar(7)
+  --
+  * user_id : char(21) <<FK>>
+  --
+  * created_at : timestamp
+  updated_at : timestamp
+}
+
+entity Category {
+  * category_id : char(21) <<PK>>
+  --
+  * name : varchar(100)
+  * type : enum("income","expense")
+  * icon : varchar(100)
+  * color : varchar(7)
+  --
+  * user_id : char(21) <<FK>>
+  --
+  * created_at : timestamp
+  updated_at : timestamp
+}
+
+entity Transaction {
+  * transaction_id : char(21) <<PK>>
+  --
+  * type : enum("income","expense")
+  * amount : decimal(15,2)
+  * description : text
+  * transaction_date : date
+  --
+  * user_id : char(21) <<FK>>
+  * category_id : char(21) <<FK>>
+  * account_id : char(21) <<FK>>
+  --
+  * created_at : timestamp
+  updated_at : timestamp
+}
+
+entity Transfer {
+  * transfer_id : char(21) <<PK>>
+  --
+  * from_account_id : char(21) <<FK>>
+  * to_account_id : char(21) <<FK>>
+  * amount : decimal(15,2)
+  * description : text
+  * transfer_date : date
+  --
+  * user_id : char(21) <<FK>>
+  --
+  * created_at : timestamp
+  updated_at : timestamp
+}
+
+' Relasi
+User ||--o{ Session : "has_sessions"
+User ||--o{ Account : "owns"
+User ||--o{ Category : "creates"
+User ||--o{ Transaction : "makes"
+User ||--o{ Transfer : "initiates"
+Account ||--o{ Transaction : "records"
+Account ||--o{ Transfer : "from_account"
+Account ||--o{ Transfer : "to_account"
+Category ||--o{ Transaction : "classifies"
+
+@enduml
